@@ -27,11 +27,11 @@ pub struct StructElement{
 }
 
 impl StructElement {
-    pub fn new(name: &str, value: Item) -> Self {
+    fn new(name: &str, value: Item) -> Self {
         let name = name.to_string();
         StructElement { name, value: vec![value] }
     }
-    pub fn add_value(&mut self, value: Item) {
+    fn add_value(&mut self, value: Item) {
         self.value.push(value);
     }
 }
@@ -42,8 +42,8 @@ pub struct StructSet{
 }
 
 impl StructSet {
-    pub fn new(set: Option<StructElement>) ->Self{
-        StructSet { value: set.map_or(vec![], |s| vec![s]) }
+    pub fn new() ->Self{
+        StructSet { value: vec![]}
     }
     pub fn add_value(&mut self, value: StructElement) {
         self.value.push(value);
