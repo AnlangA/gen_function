@@ -41,17 +41,24 @@ impl StructElement {
 
 #[derive(Clone,Debug,PartialEq, Eq)]
 pub struct StructSet{
-    value: Vec<StructElement>
+    value: Vec<StructElement>,
+    struct_value: Vec<Item>,
 }
 
 impl StructSet {
     pub fn new() ->Self{
-        StructSet { value: vec![]}
+        StructSet { value: vec![], struct_value: vec![] }
     }
     pub fn add_value(&mut self, value: StructElement) {
         self.value.push(value);
     }
-    pub fn anlaysis(mut self, file_path: &str) ->Self{
+    pub fn add_item(&mut self, value: Item) {
+        self.struct_value.push(value);
+    }
+    pub fn find_struct_value_name(&self, name: &str) -> &str {
+        self.struct_value.iter().find(|item| item.name == name).unwrap().value.as_str()
+    }
+    pub fn anlaysis(mut self, file_path: &str, file_path_c: &str) ->Self{
         let file_content = fs::read_to_string(file_path)
         .expect("无法读取文件");
 
@@ -82,6 +89,18 @@ impl StructSet {
             }
             self.add_value(struct_element.unwrap());
         }
+
+        let file_content_c = fs::read_to_string(file_path_c)
+        .expect("无法读取文件");
+
+        // 正则表达式，用于匹配结构体定义
+        let re: Regex = Regex::new(r"(st\w+_t)\s+(\w+)\s*=").unwrap();
+        for caps in re.captures_iter(&file_content_c) {
+            let struct_type = &caps[1];
+            let variable_name = &caps[2];
+            let item = Item::new(struct_type.to_string(), variable_name.to_string(), String::new());
+            self.add_item(item);
+        }
         self
     }
 }
@@ -97,6 +116,9 @@ impl DbUnitLink {
     }
     fn add_value(&mut self, value: String) {
         self.value.push(value);
+    }
+    fn get_value(&self) -> Vec<String> {
+        self.value.clone()
     }
 }
 
@@ -130,6 +152,15 @@ impl DbDataLink {
             self.add_value(db_unit.clone());
         }
         self
+    }
+}
+
+pub fn calculate_size(struct_set: StructSet, db_data_link: DbDataLink){
+    for db_unit in db_data_link.value{
+        let db_unit_value = db_unit.get_value();
+        for db_unit_value_element in db_unit_value{
+            
+        }
     }
 }
 
