@@ -3,7 +3,7 @@ use std::fs;
 use regex::Regex;
 
 #[derive(Clone,Debug,PartialEq, Eq)]
-struct Item {
+pub struct Item {
     name: String,
     value: String,
 }
@@ -33,6 +33,9 @@ impl StructElement {
     }
     fn add_value(&mut self, value: Item) {
         self.value.push(value);
+    }
+    pub fn find_item_by_value(&self, value: &str) -> Option<&Item> {
+        self.value.iter().find(|item| item.value == value)
     }
 }
 
@@ -83,7 +86,52 @@ impl StructSet {
     }
 }
 
+#[derive(Clone,Debug,PartialEq, Eq)]
+pub struct DbUnitLink{
+    value: Vec<String>
+}
 
+impl DbUnitLink {
+    fn new() -> Self {
+        DbUnitLink { value: vec![] }
+    }
+    fn add_value(&mut self, value: String) {
+        self.value.push(value);
+    }
+}
+
+#[derive(Clone,Debug,PartialEq, Eq)]
+pub struct DbDataLink{
+    value: Vec<DbUnitLink>
+}
+
+impl DbDataLink {
+    pub fn new() -> Self {
+        DbDataLink { value: vec![] }
+    }
+    pub fn add_value(&mut self, value: DbUnitLink) {
+        self.value.push(value);
+    }
+    pub fn analysis(mut self, file_path: &str) -> Self{
+        let file_content = fs::read_to_string(file_path)
+        .expect("无法读取文件");
+
+        // 正则表达式，用于匹配结构体定义
+        let re = Regex::new(r"\.pValue\s*=\s*&?(.*?)(?:\[.*?\])?,").unwrap();
+        
+        // 查找所有匹配的值
+        for cap in re.captures_iter(&file_content) {
+            let data = cap[1].replace("&", "");
+            let mut db_unit = DbUnitLink::new();
+            let parts: Vec<_> = data.split('.').map(String::from).collect();
+            for part in parts{
+                db_unit.add_value(part);
+            }
+            self.add_value(db_unit.clone());
+        }
+        self
+    }
+}
 
 /// 在链表main_list中查找是否包含链表sub_list，如果包含则返回最后一个匹配的节点，否则返回None
 pub fn find_sublist_last_node<T: PartialEq + Clone>(
