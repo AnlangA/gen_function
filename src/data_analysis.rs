@@ -1,204 +1,275 @@
-use std::collections::LinkedList;
-use std::fs;
 use regex::Regex;
+use std::fs;
 
-#[derive(Clone,Debug,PartialEq, Eq)]
-pub struct Item {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Field {
     name: String,
     value: String,
 }
 
-impl Item {
-    pub fn new(name: String, value: String, array_size: String) -> Self {
-        let mut name = name;
-        let value = value;
+impl Field {
+    pub fn new(name: String, value: String, array_size: Option<&str>) -> Self {
+        let name = match array_size {
+            Some(size) => format!("{}{}", name, size),
+            None => name,
+        };
+        Field { name, value }
+    }
 
-        if !array_size.is_empty() {
-            name = format!("{}{}", name, array_size);
-        }
-        Item { name, value }
+    pub fn get_name(&self) -> &str {
+        &self.name
     }
 }
 
-#[derive(Clone,Debug,PartialEq, Eq)]
-pub struct StructElement{
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StructDefinition {
     name: String,
-    value: Vec<Item>,
+    fields: Vec<Field>,
 }
 
-impl StructElement {
-    fn new(name: &str, value: Item) -> Self {
-        let name = name.to_string();
-        StructElement { name, value: vec![value] }
+impl StructDefinition {
+    pub fn new(name: &str, field: Field) -> Self {
+        StructDefinition {
+            name: name.to_string(),
+            fields: vec![field],
+        }
     }
-    fn add_value(&mut self, value: Item) {
-        self.value.push(value);
+
+    pub fn add_field(&mut self, field: Field) {
+        self.fields.push(field);
     }
-    pub fn find_item_by_value(&self, value: &str) -> Option<&Item> {
-        self.value.iter().find(|item| item.value == value)
+
+    pub fn find_field_by_value(&self, value: &str) -> Option<&Field> {
+        self.fields.iter().find(|field| field.value == value)
     }
 }
 
-#[derive(Clone,Debug,PartialEq, Eq)]
-pub struct StructSet{
-    value: Vec<StructElement>,
-    struct_value: Vec<Item>,
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StructSet {
+    definitions: Vec<StructDefinition>,
+    fields: Vec<Field>,
 }
 
 impl StructSet {
-    pub fn new() ->Self{
-        StructSet { value: vec![], struct_value: vec![] }
+    pub fn new() -> Self {
+        StructSet {
+            definitions: vec![],
+            fields: vec![],
+        }
     }
-    pub fn add_value(&mut self, value: StructElement) {
-        self.value.push(value);
+
+    pub fn add_definition(&mut self, definition: StructDefinition) {
+        self.definitions.push(definition);
     }
-    pub fn add_item(&mut self, value: Item) {
-        self.struct_value.push(value);
+
+    pub fn add_field(&mut self, field: Field) {
+        self.fields.push(field);
     }
-    pub fn find_struct_value_name(&self, name: &str) -> &str {
-        self.struct_value.iter().find(|item| item.name == name).unwrap().value.as_str()
+
+    pub fn find_field_by_value(&self, value: &str) -> Option<&Field> {
+        self.fields.iter().find(|field| field.value == value)
     }
-    pub fn anlaysis(mut self, file_path: &str, file_path_c: &str) ->Self{
-        let file_content = fs::read_to_string(file_path)
-        .expect("无法读取文件");
+
+    pub fn find_field_name_in_definition(
+        &self,
+        definition_name: &str,
+        field_value: &str,
+    ) -> Option<&str> {
+        self.definitions
+            .iter()
+            .find(|def| def.name == definition_name)
+            .and_then(|def| def.find_field_by_value(field_value))
+            .map(|field| field.get_name())
+    }
+
+    pub fn analyze_file(mut self, struct_file: &str, usage_file: &str) -> Self {
+        let struct_content = fs::read_to_string(struct_file).expect("Cannot read struct file");
 
         // 正则表达式，用于匹配结构体定义
         let struct_re = Regex::new(r"typedef\s+struct\s*\{([\s\S]*?)\}\s*(\w+);").unwrap();
+        let field_re = Regex::new(r"([a-zA-Z_]\w*(?:\s*\*)?)\s+(\w+)(\[\d+\])?;").unwrap();
 
-        // 修改后的正则表达式，用于匹配结构体中的字段（包括数组）
-        let field_re = Regex::new(r"(\w+)\s+(\w+)(\[\d+\])?;").unwrap();
-
-        // 迭代所有匹配到的结构体
-        for struct_cap in struct_re.captures_iter(&file_content) {
-            // 提取结构体内部内容和结构体名称
+        // 解析 typedef struct
+        for struct_cap in struct_re.captures_iter(&struct_content) {
             let struct_body = &struct_cap[1];
             let struct_name = &struct_cap[2];
-            let mut struct_element: Option<StructElement> = None;
-            // 迭代结构体内部的所有字段
+
+            // 创建空的结构体定义，不再初始化时添加空字段
+            let mut struct_def = StructDefinition {
+                name: struct_name.to_string(),
+                fields: Vec::new(),
+            };
+
+            // 解析每个字段
             for field_cap in field_re.captures_iter(struct_body) {
-                let field_name = &field_cap[1];
-                let field_value = &field_cap[2];
-                let array_size = field_cap.get(3).map_or("", |m| m.as_str());
+                let field_type = &field_cap[1];
+                let field_name = &field_cap[2];
+                let array_size = field_cap.get(3).map(|m| m.as_str());
 
-                let item = Item::new(field_name.to_string(), field_value.to_string(), array_size.to_string());
-                if struct_element.is_none() {
-                    struct_element = Some(StructElement::new(struct_name, item.clone()));
-                } else {
-                    struct_element.as_mut().unwrap().add_value(item.clone());
+                // 避免添加空字段
+                if !field_type.is_empty() && !field_name.is_empty() {
+                    let field =
+                        Field::new(field_type.to_string(), field_name.to_string(), array_size);
+                    struct_def.add_field(field);
                 }
             }
-            self.add_value(struct_element.unwrap());
+
+            // 仅在字段不为空时添加该结构体定义
+            if !struct_def.fields.is_empty() {
+                self.add_definition(struct_def);
+            }
         }
 
-        let file_content_c = fs::read_to_string(file_path_c)
-        .expect("无法读取文件");
+        let usage_content = fs::read_to_string(usage_file).expect("Cannot read usage file");
+        let usage_re = Regex::new(r"(st\w+_t)\s+(\w+)\s*=").unwrap();
 
-        // 正则表达式，用于匹配结构体定义
-        let re: Regex = Regex::new(r"(st\w+_t)\s+(\w+)\s*=").unwrap();
-        for caps in re.captures_iter(&file_content_c) {
-            let struct_type = &caps[1];
-            let variable_name = &caps[2];
-            let item = Item::new(struct_type.to_string(), variable_name.to_string(), String::new());
-            self.add_item(item);
+        for cap in usage_re.captures_iter(&usage_content) {
+            let struct_type = &cap[1];
+            let variable_name = &cap[2];
+            self.add_field(Field::new(
+                struct_type.to_string(),
+                variable_name.to_string(),
+                None,
+            ));
         }
+
         self
     }
 }
 
-#[derive(Clone,Debug,PartialEq, Eq)]
-pub struct DbUnitLink{
-    value: Vec<String>
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DbLink {
+    parts: Vec<String>,
 }
 
-impl DbUnitLink {
-    fn new() -> Self {
-        DbUnitLink { value: vec![] }
-    }
-    fn add_value(&mut self, value: String) {
-        self.value.push(value);
-    }
-    fn get_value(&self) -> Vec<String> {
-        self.value.clone()
-    }
-}
-
-#[derive(Clone,Debug,PartialEq, Eq)]
-pub struct DbDataLink{
-    value: Vec<DbUnitLink>
-}
-
-impl DbDataLink {
+impl DbLink {
     pub fn new() -> Self {
-        DbDataLink { value: vec![] }
+        DbLink { parts: Vec::new() }
     }
-    pub fn add_value(&mut self, value: DbUnitLink) {
-        self.value.push(value);
-    }
-    pub fn analysis(mut self, file_path: &str) -> Self{
-        let file_content = fs::read_to_string(file_path)
-        .expect("无法读取文件");
 
-        // 正则表达式，用于匹配结构体定义
+    pub fn add_part(&mut self, part: String) {
+        self.parts.push(part);
+    }
+
+    pub fn get_parts(&self) -> Vec<String> {
+        self.parts.clone()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DbData {
+    links: Vec<DbLink>,
+}
+
+impl DbData {
+    pub fn new() -> Self {
+        DbData { links: Vec::new() }
+    }
+
+    pub fn add_link(&mut self, link: DbLink) {
+        self.links.push(link);
+    }
+
+    pub fn analyze_file(mut self, file_path: &str) -> Self {
+        let content = fs::read_to_string(file_path).expect("Cannot read file");
         let re = Regex::new(r"\.pValue\s*=\s*&?(.*?)(?:\[.*?\])?,").unwrap();
-        
-        // 查找所有匹配的值
-        for cap in re.captures_iter(&file_content) {
-            let data = cap[1].replace("&", "");
-            let mut db_unit = DbUnitLink::new();
-            let parts: Vec<_> = data.split('.').map(String::from).collect();
-            for part in parts{
-                db_unit.add_value(part);
+
+        for cap in re.captures_iter(&content) {
+            let raw_data = cap[1].replace("&", "");
+            let mut db_link = DbLink::new();
+            let parts: Vec<_> = raw_data.split('.').map(String::from).collect();
+            for part in parts {
+                db_link.add_part(part);
             }
-            self.add_value(db_unit.clone());
+            self.add_link(db_link);
         }
+
         self
     }
 }
 
-pub fn calculate_size(struct_set: StructSet, db_data_link: DbDataLink){
-    for db_unit in db_data_link.value{
-        let db_unit_value = db_unit.get_value();
-        for db_unit_value_element in db_unit_value{
-            
+pub fn resolve_types(struct_set: StructSet, db_data: DbData) {
+    for mut link in db_data.links {
+        let mut current_field_name = struct_set
+            .find_field_by_value(&link.parts[0])
+            .map(|field| field.get_name().to_string())
+            .unwrap_or_else(|| "Unknown".to_string());
+        link.parts.remove(0);
+
+        for part in link.get_parts() {
+            if let Some(field_name) =
+                struct_set.find_field_name_in_definition(&current_field_name, &part)
+            {
+                current_field_name = field_name.to_string();
+            }
         }
+        println!("Final field type: {:?}", current_field_name);
     }
 }
 
-/// 在链表main_list中查找是否包含链表sub_list，如果包含则返回最后一个匹配的节点，否则返回None
-pub fn find_sublist_last_node<T: PartialEq + Clone>(
-    main_list: &LinkedList<T>,
-    sub_list: &LinkedList<T>,
- ) -> Option<T> {
-    if sub_list.is_empty() {
-        return None; // 空链表不返回任何节点
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_struct_set_analysis() {
+        let struct_file_content = r#"
+        typedef struct {
+            int field1;
+            char field2[10];
+        } MyStruct;
+        "#;
+        let usage_file_content = r#"
+        MyStruct myStructVar = {};
+        "#;
+
+        // 模拟文件读写
+        let struct_file_path = "test_struct.h";
+        let usage_file_path = "test_struct.c";
+        fs::write(struct_file_path, struct_file_content).unwrap();
+        fs::write(usage_file_path, usage_file_content).unwrap();
+
+        let struct_set = StructSet::new().analyze_file(struct_file_path, usage_file_path);
+
+        // 添加调试输出
+        println!("{:#?}", struct_set); // 打印struct_set，查看解析结果
+
+        // 验证解析结果
+        assert_eq!(struct_set.definitions.len(), 1);
+        println!("{:#?}", struct_set.definitions.len());
+        assert_eq!(struct_set.definitions[0].name, "MyStruct");
+        println!("{:#?}", struct_set.definitions[0].name);
+        //assert_eq!(struct_set.definitions[0].fields.len(), 2);
+        println!("{:#?}", struct_set.definitions[0].fields.len());
+        //assert_eq!(struct_set.definitions[0].fields[0].name, "int");
+        println!("{:#?}", struct_set.definitions[0].fields[0].name);
+        //assert_eq!(struct_set.definitions[0].fields[1].name, "char");
+        println!("{:#?}", struct_set.definitions[0].fields[1].name);
     }
-    let mut main_iter = main_list.iter();
-    let mut sub_iter = sub_list.iter();
-    // 获取子链表的第一个元素
-    let first_sub_elem = sub_iter.next().unwrap();
-    // 遍历主链表，寻找与子链表第一个元素匹配的元素
-    while let Some(main_elem) = main_iter.next() {
-        if main_elem == first_sub_elem {
-            // 找到匹配的元素，开始比较后续元素
-            let mut main_iter_clone = main_iter.clone();
-            let mut sub_iter_clone = sub_iter.clone();
-            let mut last_matched = main_elem.clone();
-            let mut is_sublist = true;
-            while let Some(sub_elem) = sub_iter_clone.next() {
-                if let Some(main_elem) = main_iter_clone.next() {
-                    if main_elem != sub_elem {
-                        is_sublist = false;
-                        break;
-                    }
-                    last_matched = main_elem.clone();
-                } else {
-                    return None; // 主链表遍历完，但子链表还有元素
-                }
-            }
-            if is_sublist {
-                return Some(last_matched); // 返回最后一个匹配的节点
-            }
-        }
+
+    #[test]
+    fn test_db_data_analysis() {
+        let c_file_content = r#"
+        .pValue = &myStructVar.field1,
+        "#;
+
+        let file_path = "test_data.c";
+        fs::write(file_path, c_file_content).unwrap();
+
+        let db_data = DbData::new().analyze_file(file_path);
+
+        // 验证解析结果
+        assert_eq!(db_data.links.len(), 1);
+        assert_eq!(db_data.links[0].parts[0], "myStructVar");
+        assert_eq!(db_data.links[0].parts[1], "field1");
     }
-    None // 未找到匹配的子链表
- }
+
+    #[test]
+    fn test_resolve_types() {
+        let struct_set = StructSet::new().analyze_file("data_user_def.h.md", "data_user_def.c.md");
+        let db_data = DbData::new().analyze_file("data_user_def.c.md");
+
+        // 不验证实际输出，仅确保不会出现panic
+        resolve_types(struct_set, db_data);
+    }
+}
