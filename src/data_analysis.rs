@@ -186,9 +186,17 @@ impl DbData {
 
         self
     }
+
+    pub fn get_last_part(&self) -> Vec<String> {
+        self.links
+            .iter()
+            .map(|link| link.get_parts().last().unwrap().clone())
+            .collect()
+    }
 }
 
-pub fn resolve_types(struct_set: StructSet, db_data: DbData) {
+pub fn resolve_types(struct_set: StructSet, db_data: DbData) -> Vec<String>{
+    let mut type_name = vec![];
     for mut link in db_data.links {
         let mut current_field_name = struct_set
             .find_field_by_value(&link.parts[0])
@@ -203,8 +211,9 @@ pub fn resolve_types(struct_set: StructSet, db_data: DbData) {
                 current_field_name = field_name.to_string();
             }
         }
-        println!("Final field type: {:?}", current_field_name);
+        type_name.push(current_field_name.clone());
     }
+    type_name
 }
 
 #[cfg(test)]
@@ -236,14 +245,10 @@ mod tests {
 
         // 验证解析结果
         assert_eq!(struct_set.definitions.len(), 1);
-        println!("{:#?}", struct_set.definitions.len());
         assert_eq!(struct_set.definitions[0].name, "MyStruct");
-        println!("{:#?}", struct_set.definitions[0].name);
-        //assert_eq!(struct_set.definitions[0].fields.len(), 2);
-        println!("{:#?}", struct_set.definitions[0].fields.len());
-        //assert_eq!(struct_set.definitions[0].fields[0].name, "int");
-        println!("{:#?}", struct_set.definitions[0].fields[0].name);
-        //assert_eq!(struct_set.definitions[0].fields[1].name, "char");
+        assert_eq!(struct_set.definitions[0].fields.len(), 2);
+        assert_eq!(struct_set.definitions[0].fields[0].name, "int");
+        assert_eq!(struct_set.definitions[0].fields[1].name, "char[10]");
         println!("{:#?}", struct_set.definitions[0].fields[1].name);
     }
 
