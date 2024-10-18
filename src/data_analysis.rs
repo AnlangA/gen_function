@@ -187,10 +187,17 @@ impl DbData {
         self
     }
 
-    pub fn get_last_part(&self) -> Vec<String> {
+    pub fn get_part_name(&self) -> Vec<String> {
         self.links
             .iter()
-            .map(|link| link.get_parts().last().unwrap().clone())
+            .map(|link| {
+                let mut part_name: String = String::new();
+                for part in link.get_parts() {
+                    let part_string = remove_leading_lowercase_and_digits(&part);
+                    part_name = format!("{}{}", part_name, part_string);
+                }
+                part_name
+            })
             .collect()
     }
 }
@@ -214,6 +221,27 @@ pub fn resolve_types(struct_set: StructSet, db_data: DbData) -> Vec<String>{
         type_name.push(current_field_name.clone());
     }
     type_name
+}
+
+pub fn remove_leading_lowercase_and_digits(input: &str) -> String {
+    // 匹配开头的小写字母和数字
+    let re = Regex::new(r"^[a-z0-9]+").unwrap();
+    
+    // 替换开头的小写字母和数字为空字符串
+    re.replace(input, "").to_string()
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DbInfoUnit {
+    name: String,
+    type_name: String,
+}
+
+pub fn db_info(db_data: Vec<String>, type_name: Vec<String>) -> Vec<DbInfoUnit> {
+    db_data.into_iter()
+        .zip(type_name.into_iter())
+        .map(|(name, type_name)| DbInfoUnit { name, type_name })
+        .collect()
 }
 
 #[cfg(test)]

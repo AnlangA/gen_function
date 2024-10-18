@@ -6,7 +6,7 @@
 typedef struct
 {
     //可存储32个字符，留一个空白字符，用于判断字符串结束
-    char data[33];
+    u8 u8Data[33];
 }stChar_16_t;
 
 
