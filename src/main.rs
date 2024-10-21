@@ -1,4 +1,5 @@
 use gen_db::data_analysis::*;
+use gen_db::gen_file::db_gen;
 
 fn main() {
     // 分析头文件和C文件，构建StructSet
@@ -12,5 +13,7 @@ fn main() {
 
     //获取生成代码的必要数据
     let db_info = db_info(db_data.get_part_name(), type_name);
-    println!("{:#?}", db_info);
+    //println!("{:#?}", db_info);
+
+    db_gen(db_info);
 }

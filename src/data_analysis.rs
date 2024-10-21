@@ -237,6 +237,15 @@ pub struct DbInfoUnit {
     type_name: String,
 }
 
+impl DbInfoUnit {
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+    pub fn type_name(&self) -> String {
+        self.type_name.clone()
+    }
+}
+
 pub fn db_info(db_data: Vec<String>, type_name: Vec<String>) -> Vec<DbInfoUnit> {
     db_data.into_iter()
         .zip(type_name.into_iter())
