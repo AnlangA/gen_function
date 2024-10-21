@@ -12,8 +12,8 @@ fn main() {
     let type_name = resolve_types(struct_set, db_data.clone());
 
     //获取生成代码的必要数据
-    let db_info = db_info(db_data.get_part_name(), type_name);
-    //println!("{:#?}", db_info);
+    let db_info = db_info(db_data.get_part_name(), db_data.get_last_part_name(), type_name);
+    println!("{:#?}", db_info);
 
     db_gen(db_info);
 }

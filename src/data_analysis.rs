@@ -200,6 +200,18 @@ impl DbData {
             })
             .collect()
     }
+
+    pub fn get_last_part_name(&self) -> Vec<String> {
+        self.links
+            .iter()
+            .map(|link| {
+                let binding = link.get_parts();
+                let last_part = binding.last().unwrap();
+                let part_string = last_part.to_string();
+                part_string
+            })
+            .collect()
+    }
 }
 
 pub fn resolve_types(struct_set: StructSet, db_data: DbData) -> Vec<String>{
@@ -234,6 +246,7 @@ pub fn remove_leading_lowercase_and_digits(input: &str) -> String {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DbInfoUnit {
     name: String,
+    value: String,
     type_name: String,
 }
 
@@ -241,15 +254,24 @@ impl DbInfoUnit {
     pub fn name(&self) -> String {
         self.name.clone()
     }
+    pub fn value(&self) -> String {
+        self.value.clone()
+    }
     pub fn type_name(&self) -> String {
         self.type_name.clone()
     }
 }
 
-pub fn db_info(db_data: Vec<String>, type_name: Vec<String>) -> Vec<DbInfoUnit> {
-    db_data.into_iter()
-        .zip(type_name.into_iter())
-        .map(|(name, type_name)| DbInfoUnit { name, type_name })
+pub fn db_info(db_data: Vec<String>, value: Vec<String>, type_name: Vec<String>) -> Vec<DbInfoUnit> {
+    db_data
+        .iter()
+        .zip(value.iter())
+        .zip(type_name.iter())
+        .map(|((name, value), type_name)| DbInfoUnit {
+            name: name.to_string(),
+            value: value.to_string(),
+            type_name: type_name.to_string(),
+        })
         .collect()
 }
 
