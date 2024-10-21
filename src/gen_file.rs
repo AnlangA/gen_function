@@ -95,7 +95,7 @@ void sDbSet<name>(<value_type>* pDataNew)
     <value> = *(<value_type>*)sDbGetDataValue(&pDb[<key>]);
     sDbGiveMutex(&pDb[<key>]);
 
-    if(memcmp(&pDataNew, &<value>, pDb[<key>].u16Bytes) != 0}
+    if(memcmp(&pDataNew, &<value>, pDb[<key>].u16Bytes) != 0)
     {
         sDbTakeMutex(&pDb[<key>]);
         memcpy((<value_type>*)sDbGetDataValue(&pDb[<key>]), pDataNew, pDb[<key>].u16Bytes);
@@ -186,14 +186,13 @@ fn db_api_c(data: Vec<DbInfoUnit>){
             let array_type = &captures[1];
             // 判断是否匹配到数组大小
             if let Some(_array_size) = captures.get(2) {
-                value_type = format!("{}", array_type);
-                value_retrun_type = format!("{}*", array_type);
                 init_value = String::from("0");
             } else {
-                value_retrun_type = format!("{}*", array_type);
-                value_type = format!("{}", array_type);
+                
                 init_value = String::from("{0}");
             }
+            value_retrun_type = format!("{}*", array_type);
+            value_type = format!("{}", array_type);
         }
 
         let name = data_unit.name();
@@ -237,6 +236,7 @@ fn db_api_h(data: Vec<DbInfoUnit>){
     for (_index, data_unit) in data.iter().enumerate(){
 
         let mut value_retrun_type = String::new();
+        let mut value_type = String::new();
         if let Some(captures) = re.captures(data_unit.type_name().as_str()) {
             // 提取类型
             let array_type = &captures[1];
@@ -246,13 +246,15 @@ fn db_api_h(data: Vec<DbInfoUnit>){
             } else {
                 value_retrun_type = format!("{}*", array_type);
             }
+            value_type = format!("{}", array_type);
         }
 
         let name = data_unit.name();
 
         let get_data = DB_DATA_API_H
         .replace("<value_retrun_type>", value_retrun_type.as_str())
-        .replace("<name>", name.as_str());
+        .replace("<name>", name.as_str())
+        .replace("<value_type>", value_type.as_str());
 
         let _ = write_db_api_h.write_all(get_data.as_bytes());
     }
