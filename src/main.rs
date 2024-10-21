@@ -1,5 +1,5 @@
 use gen_db::data_analysis::*;
-use gen_db::gen_file::db_gen;
+use gen_db::gen_file::*;
 
 fn main() {
     // 分析头文件和C文件，构建StructSet
@@ -15,5 +15,7 @@ fn main() {
     let db_info = db_info(db_data.get_part_name(), db_data.get_last_part_name(), type_name);
     println!("{:#?}", db_info);
 
-    db_gen(db_info);
+    db_gen(db_info.clone());
+
+    db_api(db_info);
 }

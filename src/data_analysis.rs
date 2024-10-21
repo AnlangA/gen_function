@@ -1,6 +1,7 @@
 use regex::Regex;
 use std::fs;
 
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Field {
     name: String,
