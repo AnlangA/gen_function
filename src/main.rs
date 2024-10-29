@@ -3,10 +3,10 @@ use gen_db::gen_file::*;
 
 fn main() {
     // 分析头文件和C文件，构建StructSet
-    let struct_set = StructSet::new().analyze_file("data_user_def.h.md", "data_user_def.c.md");
+    let struct_set = StructSet::new().analyze_file("../user/app/db/db_user_def.h.md", "../user/app/db/db_user_def.c.md");
 
     // 分析C文件，构建DbData
-    let db_data = DbData::new().analyze_file("data_user_def.c.md");
+    let db_data = DbData::new().analyze_file("../user/app/db/db_user_def.c.md");
 
     // 根据解析的数据，计算结构体类型
     let type_name = resolve_types(struct_set, db_data.clone());

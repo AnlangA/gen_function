@@ -5,13 +5,33 @@ use regex::Regex;
 use std::io::{BufWriter, Write};
 
 const DB_GEN_C_HEAD: &str = 
-r#"#include "db_gen.h"
+r#"/**
+ * @file db_api.c
+ * @author gen_db.exe
+ * @brief Software automatically generated, do not modify manually.
+ * @version 0.1
+ * @date [data]
+ * 
+ * @copyright Shenzhen EN Plus Technologies Co., Ltd. 2015-2024. All rights reserved 
+ * 
+ */
+#include "db_gen.h"
 
 #define cLogLevel eEnLogLevelDebug
 static const char *TAG = "db_gen";"#;
 
 const DB_GEN_H_HEAD: &str =
-r#"#pragma once
+r#"/**
+ * @file db_api.c
+ * @author gen_db.exe
+ * @brief Software automatically generated, do not modify manually.
+ * @version 0.1
+ * @date [data]
+ * 
+ * @copyright Shenzhen EN Plus Technologies Co., Ltd. 2015-2024. All rights reserved 
+ * 
+ */
+#pragma once
 #include "db_data_def.h"
 #include "en_log.h"
 
@@ -58,10 +78,30 @@ r#"        default:
 }"#;
 
 const DB_DATA_API_C_HEAD: &str =
-r#"#include "db_data_api.h""#;
+r#"/**
+ * @file db_api.c
+ * @author gen_db.exe
+ * @brief Software automatically generated, do not modify manually.
+ * @version 0.1
+ * @date [data]
+ * 
+ * @copyright Shenzhen EN Plus Technologies Co., Ltd. 2015-2024. All rights reserved 
+ * 
+ */
+#include "db_data_api.h""#;
 
 const DB_DATA_API_H_HEAD: &str =
-r#"#pragma once
+r#"/**
+ * @file db_api.c
+ * @author gen_db.exe
+ * @brief Software automatically generated, do not modify manually.
+ * @version 0.1
+ * @date [data]
+ * 
+ * @copyright Shenzhen EN Plus Technologies Co., Ltd. 2015-2024. All rights reserved 
+ * 
+ */
+#pragma once
 #include "en_common.h"
 #include "db_data_def.h"
 "#;
@@ -83,7 +123,7 @@ void sDbGet<name>(<value_retrun_type> pData)
 
 const DB_DATA_API_C_SET_DATA: &str = r#"
 /**
- * @brief set [<key>] Value
+ * @brief set [[<name>]] Value
  */
 void sDbSet<name>(<value_type>* pDataNew)
 {
@@ -95,7 +135,7 @@ void sDbSet<name>(<value_type>* pDataNew)
     <value> = *(<value_type>*)sDbGetDataValue(&pDb[<key>]);
     sDbGiveMutex(&pDb[<key>]);
 
-    if(memcmp(&pDataNew, &<value>, pDb[<key>].u16Bytes) != 0)
+    if(memcmp(pDataNew, &<value>, pDb[<key>].u16Bytes) != 0)
     {
         sDbTakeMutex(&pDb[<key>]);
         memcpy((<value_type>*)sDbGetDataValue(&pDb[<key>]), pDataNew, pDb[<key>].u16Bytes);
@@ -126,15 +166,15 @@ fn db_gen_c(data: Vec<DbInfoUnit>){
     .read(true)
     .write(true)
     .create(true)
-    .open("db_gen.c")
+    .open("../user/app/db/db_gen.c")
     .unwrap();
 
     let time = get_current_time();
     let mut write_db_gen_c = BufWriter::new(db_gen_c);
-    let db_gen_0 = DB_GEN_C_HEAD.as_bytes();
+    let db_gen_0 = DB_GEN_C_HEAD.replace("[data]", time.as_str());
     let db_gen_1 = DB_GET_DATA_SIZE.replace("[time]", time.as_str());
     
-    let _ = write_db_gen_c.write_all(db_gen_0);
+    let _ = write_db_gen_c.write_all(db_gen_0.as_bytes());
     let _ = write_db_gen_c.write_all(db_gen_1.as_bytes());
 
     let mut db_set_size = DB_SET_DATA_SIZE_0.to_string();
@@ -152,13 +192,14 @@ fn db_gen_h(){
     .read(true)
     .write(true)
     .create(true)
-    .open("db_gen.h")
+    .open("../user/app/db/db_gen.h")
     .unwrap();
 
+    let time = get_current_time();
     let mut write_db_gen_h = BufWriter::new(db_gen_h);
 
-    let db_gen_h = DB_GEN_H_HEAD.as_bytes();
-    let _ = write_db_gen_h.write_all(db_gen_h);
+    let db_gen_h = DB_GEN_H_HEAD.replace("[data]", time.as_str());
+    let _ = write_db_gen_h.write_all(db_gen_h.as_bytes());
 }
 
 fn db_api_c(data: Vec<DbInfoUnit>){
@@ -166,13 +207,15 @@ fn db_api_c(data: Vec<DbInfoUnit>){
     .read(true)
     .write(true)
     .create(true)
-    .open("db_data_api.c")
+    .open("../user/app/db/db_data_api.c")
     .unwrap();
+
+    let time = get_current_time();
 
     let mut write_db_api_c = BufWriter::new(db_api_c);
 
-    let db_api_c_0 = DB_DATA_API_C_HEAD.as_bytes();
-    let _ = write_db_api_c.write_all(db_api_c_0);
+    let db_api_c_0 = DB_DATA_API_C_HEAD.replace("[data]", time.as_str());
+    let _ = write_db_api_c.write_all(db_api_c_0.as_bytes());
 
     let re = Regex::new(r"(\w+)(?:\[(\d+)\])?").unwrap();
 
@@ -222,14 +265,16 @@ fn db_api_h(data: Vec<DbInfoUnit>){
     .read(true)
     .write(true)
     .create(true)
-    .open("db_data_api.h")
+    .open("../user/app/db/db_data_api.h")
     .unwrap();
+
+    let time = get_current_time();
 
     let mut write_db_api_h = BufWriter::new(db_api_h);
 
-    let db_api_h_head = DB_DATA_API_H_HEAD.as_bytes();
+    let db_api_h_head = DB_DATA_API_H_HEAD.replace("[data", time.as_str());
 
-    let _ = write_db_api_h.write_all(db_api_h_head);
+    let _ = write_db_api_h.write_all(db_api_h_head.as_bytes());
 
     let re = Regex::new(r"(\w+)(?:\[(\d+)\])?").unwrap();
 
